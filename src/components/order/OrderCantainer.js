@@ -1,0 +1,15 @@
+import OrderFooter from './OrderFooter';
+import OrderHeader from './OrderHeader';
+import OrderItemList from './OrderItemList';
+
+function OrderContainer() {
+  return (
+    <div className="tw-max-w-6xl tw-m-auto tw-mt-6 tw-mb-5 tw-rounded-md tw-text-light-brown tw-font-extrabold">
+      <OrderHeader />
+      <OrderItemList />
+      <OrderFooter />
+    </div>
+  );
+}
+
+export default OrderContainer;
