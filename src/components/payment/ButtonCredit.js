@@ -3,19 +3,58 @@ import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { publicKey } from '../../confidential/omiseKey';
 import { checkoutCreditCard } from '../../api/checkout';
-import { addOrder, updateUserOrder } from '../../api/order';
+import {
+  addOrder,
+  getOrderItemByOrderId,
+  updateUserOrder,
+} from '../../api/order';
 import Swal from 'sweetalert2';
 import { deleteAllCart } from '../../api/cart';
 import { useNavigate } from 'react-router-dom';
 import { useOrder } from '../../contexts/OrderContext';
+import { useEffect } from 'react';
 
 let OmiseCard;
 
 function ButtonCredit({ rePay, orderId }) {
   const { user } = useAuth();
   const { carts, fetchCart } = useCart();
-  const { fetchOrder, allAddress } = useOrder();
+  const {
+    orderItems: rePayItems,
+    fetchOrder,
+    allAddress,
+    setAllAddress,
+    setOrderItems,
+  } = useOrder();
   const navigate = useNavigate();
+
+  const fetchOrderItem = async () => {
+    try {
+      const res = await getOrderItemByOrderId(orderId);
+      console.log(res.data.orderItems);
+
+      setOrderItems(res.data.orderItems);
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Excuse me',
+        text: err?.response?.data?.message || err,
+        didOpen: () => {
+          Swal.hideLoading();
+        },
+      });
+    }
+  };
+
+  const rePayTotal =
+    rePayItems.reduce((prev, cur) => {
+      prev += cur.amount * cur.Product.price;
+      return prev;
+    }, 0) * 100;
+
+  useEffect(() => {
+    fetchOrderItem();
+  }, []);
 
   const orderItems = carts.map((el) => ({
     price: el.Product.price,
@@ -49,7 +88,7 @@ function ButtonCredit({ rePay, orderId }) {
   const omiseCardHandler = () => {
     OmiseCard.open({
       frameDescription: 'Invoice #5454',
-      amount: total,
+      amount: rePay ? rePayTotal : total,
       onCreateTokenSuccess: handleCheckout,
     });
   };
@@ -77,6 +116,8 @@ function ButtonCredit({ rePay, orderId }) {
 
       rePay || (await fetchCart());
 
+      rePay || setAllAddress('');
+
       rePay || navigate('/order/list');
 
       const res = await checkoutCreditCard({
@@ -86,6 +127,7 @@ function ButtonCredit({ rePay, orderId }) {
         nickName: user.nickName,
         userId: user.id,
       });
+      console.log(res.data.charge);
 
       if (res.data.status === 'successful') {
         await updateUserOrder({
